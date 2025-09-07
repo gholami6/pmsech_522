@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ابزار تبدیل Excel به CSV</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Tahoma', Arial, sans-serif;
+            margin: 20px;
+            background-color: #CFD8DC;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            border-bottom: 2px solid #2196F3;
+            padding-bottom: 10px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .section h3 {
+            color: #2196F3;
+            margin-top: 0;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background-color: #fafafa;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #2196F3;
+        }
+        .upload-area.dragover {
+            border-color: #2196F3;
+            background-color: #e3f2fd;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        button { cursor: pointer; margin: 5px; }
+        .result {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+        .step {
+            background-color: #e8f5e8;
+            border-left: 4px solid #4CAF50;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: right;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 ابزار تبدیل Excel به CSV</h1>
+        
+        <div class="section">
+            <h3>📋 راهنمای سریع</h3>
+            <div class="step">
+                <strong>گام 1:</strong> فایل Excel خود را انتخاب کنید یا در کادر زیر بکشید
+            </div>
+            <div class="step">
+                <strong>گام 2:</strong> اطلاعات فایل را بررسی کنید
+            </div>
+            <div class="step">
+                <strong>گام 3:</strong> فایل CSV را دانلود کنید
+            </div>
+            <div class="step">
+                <strong>گام 4:</strong> فایل CSV را به همراه سایر فایل‌های API آپلود کنید
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>📂 انتخاب فایل Excel</h3>
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <p>📁 کلیک کنید یا فایل Excel را اینجا بکشید</p>
+                <p style="font-size: 0.9em; color: #666;">فرمت‌های پشتیبانی شده: .xlsx, .xls</p>
+            </div>
+            <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFile(this)">
+        </div>
+
+        <div class="section" id="fileInfo" style="display: none;">
+            <h3>📊 اطلاعات فایل</h3>
+            <div id="fileDetails"></div>
+            <button class="btn btn-primary" onclick="convertToCSV()" id="convertBtn" disabled>تبدیل به CSV</button>
+        </div>
+
+        <div class="section" id="csvPreview" style="display: none;">
+            <h3>👁️ پیش‌نمایش CSV</h3>
+            <div class="warning">
+                <strong>توجه:</strong> اطمینان حاصل کنید که ستون‌های زیر در فایل شما موجود باشند:
+                <br>
+                تاریخ, تولید, هدف, راندمان, شیفت, خط, نوع_توقف, مدت_توقف, علت_توقف, تجهیز, اپراتور, وضعیت, آخرین_نگهداری
+            </div>
+            <div id="preview"></div>
+            <button class="btn btn-success mt-2" onclick="downloadCSV()" id="downloadBtn">💾 دانلود فایل CSV</button>
+        </div>
+
+        <div class="section">
+            <h3>❓ مشکل در تبدیل؟</h3>
+            <p><strong>روش دستی:</strong></p>
+            <ol>
+                <li>فایل Excel را در Microsoft Excel یا LibreOffice باز کنید</li>
+                <li>از منوی "File" گزینه "Save As" را انتخاب کنید</li>
+                <li>در قسمت "Save as type" گزینه "CSV UTF-8 (Comma delimited)" را انتخاب کنید</li>
+                <li>نام فایل را <code>production_data.csv</code> قرار دهید</li>
+                <li>روی "Save" کلیک کنید</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let workbook = null;
+        let csvData = '';
+
+        // Drag and drop functionality
+        const uploadArea = document.querySelector('.upload-area');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            uploadArea.classList.add('dragover');
+        }
+
+        function unhighlight(e) {
+            uploadArea.classList.remove('dragover');
+        }
+
+        uploadArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                handleFile({ files: files });
+            }
+        }
+
+        function handleFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = e.target.result;
+                    workbook = XLSX.read(data, { type: 'binary' });
+                    
+                    displayFileInfo(file, workbook);
+                    document.getElementById('convertBtn').disabled = false;
+                } catch (error) {
+                    alert('خطا در خواندن فایل: ' + error.message);
+                }
+            };
+            reader.readAsBinaryString(file);
+        }
+
+        function displayFileInfo(file, workbook) {
+            const fileInfo = document.getElementById('fileInfo');
+            const fileDetails = document.getElementById('fileDetails');
+            
+            let sheetsInfo = '<h4>شیت‌های موجود:</h4><ul>';
+            workbook.SheetNames.forEach(name => {
+                const sheet = workbook.Sheets[name];
+                const range = XLSX.utils.decode_range(sheet['!ref']);
+                const rowCount = range.e.r + 1;
+                const colCount = range.e.c + 1;
+                sheetsInfo += `<li><strong>${name}</strong> - ${rowCount} ردیف، ${colCount} ستون</li>`;
+            });
+            sheetsInfo += '</ul>';
+
+            fileDetails.innerHTML = `
+                <p><strong>نام فایل:</strong> ${file.name}</p>
+                <p><strong>حجم:</strong> ${(file.size / 1024).toFixed(2)} KB</p>
+                <p><strong>تعداد شیت‌ها:</strong> ${workbook.SheetNames.length}</p>
+                ${sheetsInfo}
+            `;
+            
+            fileInfo.style.display = 'block';
+        }
+
+        function convertToCSV() {
+            if (!workbook) return;
+
+            // Use first sheet
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Convert to CSV
+            csvData = XLSX.utils.sheet_to_csv(worksheet);
+            
+            // Display preview
+            displayCSVPreview(csvData);
+            
+            document.getElementById('csvPreview').style.display = 'block';
+        }
+
+        function displayCSVPreview(csvData) {
+            const lines = csvData.split('\n');
+            const maxPreviewLines = 10;
+            
+            let previewHTML = '<h4>پیش‌نمایش (10 ردیف اول):</h4>';
+            previewHTML += '<table class="table table-striped table-bordered table-sm align-middle">';
+            
+            for (let i = 0; i < Math.min(lines.length, maxPreviewLines); i++) {
+                if (lines[i].trim()) {
+                    const cells = lines[i].split(',');
+                    previewHTML += '<tr>';
+                    cells.forEach(cell => {
+                        const tag = i === 0 ? 'th' : 'td';
+                        previewHTML += `<${tag}>${cell.trim()}</${tag}>`;
+                    });
+                    previewHTML += '</tr>';
+                }
+            }
+            
+            previewHTML += '</table>';
+            previewHTML += `<p><strong>تعداد کل ردیف‌ها:</strong> ${lines.length - 1}</p>`;
+            
+            document.getElementById('preview').innerHTML = previewHTML;
+        }
+
+        function downloadCSV() {
+            if (!csvData) return;
+
+            const blob = new Blob(['\ufeff' + csvData], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'production_data.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

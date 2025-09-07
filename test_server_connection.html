@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>تست اتصال سرور</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h2>تست اتصال به سرور</h2>
+    <button onclick="testConnection()">تست اتصال</button>
+    <div id="result"></div>
+
+    <script>
+        async function testConnection() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'در حال تست...';
+            
+            try {
+                // تست 1: اتصال به سرور اصلی
+                console.log('تست 1: اتصال به سرور اصلی');
+                const response1 = await fetch('https://sechahoon.liara.run', {
+                    method: 'GET',
+                    mode: 'no-cors'
+                });
+                console.log('نتیجه تست 1:', response1);
+                
+                // تست 2: اتصال به API
+                console.log('تست 2: اتصال به API');
+                const response2 = await fetch('https://sechahoon.liara.run/simple_xlsx_to_json.php', {
+                    method: 'GET',
+                    mode: 'no-cors'
+                });
+                console.log('نتیجه تست 2:', response2);
+                
+                resultDiv.innerHTML = `
+                    <h3>نتایج تست:</h3>
+                    <p>تست 1 (سرور اصلی): ${response1.status} - ${response1.statusText}</p>
+                    <p>تست 2 (API): ${response2.status} - ${response2.statusText}</p>
+                    <p>نکته: به دلیل CORS، جزئیات کامل در کنسول مرورگر قابل مشاهده است.</p>
+                `;
+                
+            } catch (error) {
+                console.error('خطا در تست:', error);
+                resultDiv.innerHTML = `<p style="color: red;">خطا: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

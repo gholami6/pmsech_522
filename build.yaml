@@ -1,0 +1,7 @@
+targets:
+  $default:
+    builders:
+      hive_generator:
+        options:
+          input_directory: lib/models
+          output_directory: lib/models 
